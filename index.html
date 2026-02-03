@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>管理表</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --text:#e8eef6;
+      --muted:#a9b4c2;
+      --cell:#162235;
+      --cell-on:#1f6feb;
+      --cell-border:#22314a;
+      --danger:#d73a49;
+      --warn:#ffb020;
+      --ok:#2ea043;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:10px 12px 8px;
+      position:sticky;
+      top:0;
+      background:linear-gradient(to bottom, rgba(11,15,20,0.96), rgba(11,15,20,0.78));
+      backdrop-filter: blur(8px);
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      z-index:10;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+    }
+    .card{
+      background:rgba(16,24,38,0.85);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:12px;
+      padding:8px 10px;
+    }
+    label{
+      font-size:12px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:6px;
+    }
+    input[type="date"], input[type="number"], input[type="text"]{
+      padding:9px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:#0f1726;
+      color:var(--text);
+      font-size:15px;
+      outline:none;
+      width: 100%;
+    }
+    .w-date{ width: 170px; }
+    .w-num{ width: 120px; }
+    .w-hide{ width: min(520px, 92vw); }
+
+    button{
+      padding:9px 11px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.10);
+      background:#0f1726;
+      color:var(--text);
+      font-size:15px;
+      cursor:pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      white-space:nowrap;
+    }
+    button.primary{ background:rgba(31,111,235,0.18); border-color:rgba(31,111,235,0.40); }
+    button.danger{ background:rgba(215,58,73,0.16); border-color:rgba(215,58,73,0.38); }
+    button:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .stat{
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      gap:8px;
+      align-items:baseline;
+    }
+    .stat strong{ font-size:20px; color:var(--text); }
+
+    main{ padding: 10px 12px 14px; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      gap:6px;
+      align-items:stretch;
+    }
+
+    .cell{
+      user-select:none;
+      -webkit-user-select:none;
+      border-radius:10px;
+      border:1px solid var(--cell-border);
+      background:var(--cell);
+      color:var(--text);
+      padding:10px 0;
+      text-align:center;
+      font-size:14px;
+      font-weight:700;
+      line-height:1;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cell.on{
+      background:var(--cell-on);
+      border-color:rgba(255,255,255,0.20);
+      box-shadow: 0 6px 18px rgba(31,111,235,0.18);
+    }
+
+    .hint{
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    .msg{
+      margin-top:6px;
+      font-size:12px;
+      line-height:1.4;
+    }
+    .msg.ok{ color: rgba(46,160,67,0.95); }
+    .msg.err{ color: rgba(215,58,73,0.95); }
+    .msg.warn{ color: rgba(255,176,32,0.95); }
+
+    @media (min-width: 980px){ .cell{ padding:8px 0; font-size:13px; } }
+    @media (min-width: 760px){ .cell{ padding:9px 0; font-size:13px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <div class="card w-date">
+        <label>日付</label>
+        <input id="dateInput" type="date" />
+      </div>
+
+      <div class="card w-num">
+        <label>最大（例：100）</label>
+        <input id="maxNum" type="number" min="1" value="100" />
+      </div>
+
+      <div class="card w-hide">
+        <label>消す数字（重複NG）</label>
+        <input id="hideInput" type="text" placeholder="例：56-69, 3, 8" />
+        <div id="hideMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <label>操作</label>
+        <div class="row" style="gap:8px">
+          <button id="preset100" class="primary">1-100</button>
+          <button id="applyBtn" class="primary">反映</button>
+          <button id="resetBtn" class="danger">リセット</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label>ON数</label>
+        <div class="stat"><strong id="countOn">0</strong><span>個</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div id="grid" class="grid" style="--cols:10;"></div>
+      <div class="hint">
+        ・数字タップでON/OFF（色切替）<br/>
+        ・「消す数字」は非表示（例：56-69で飛び番）<br/>
+        ・消す指定は<strong>重複/かぶり禁止</strong>（例：2-5,4 はNG / 3,3 もNG）<br/>
+        ・状態/日付/最大/消す数字は端末内に自動保存
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "tap-grid-state-v3";
+
+    const elGrid = document.getElementById("grid");
+    const elCountOn = document.getElementById("countOn");
+    const elDate = document.getElementById("dateInput");
+    const elMaxNum = document.getElementById("maxNum");
+    const elHide = document.getElementById("hideInput");
+    const elHideMsg = document.getElementById("hideMsg");
+    const elApply = document.getElementById("applyBtn");
+    const elReset = document.getElementById("resetBtn");
+    const elPreset100 = document.getElementById("preset100");
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      }catch(_){ return null; }
+    }
+    function saveState(state){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+    function todayISO(){
+      const d = new Date();
+      return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    }
+    function defaultState(){
+      return { date: todayISO(), max: 100, hide: "", on: {} };
+    }
+
+    // 例: "2-5,10, 56-69" を検証しつつ Set にする
+    // 重複/かぶり/不正トークン/範囲外はエラーとして返す
+    function validateAndParseHide(text, max){
+      const result = {
+        ok: true,
+        set: new Set(),
+        duplicates: new Set(),
+        invalidTokens: [],
+        outOfRange: [],
+        normalized: "" // 表示用（今回は入力そのまま採用）
+      };
+
+      const src = (text || "").replace(/\s+/g, "");
+      if(!src) return result;
+
+      const parts = src.split(",").filter(p => p.length > 0);
+
+      for(const token of parts){
+        const range = token.match(/^(\d+)-(\d+)$/);
+        if(range){
+          let a = Number(range[1]), b = Number(range[2]);
+          if(!Number.isFinite(a) || !Number.isFinite(b)){
+            result.invalidTokens.push(token);
+            continue;
+          }
+          if(a > b) [a,b] = [b,a];
+
+          // 範囲外が混じる場合はエラー（厳格）
+          if(a < 1 || b > max){
+            result.outOfRange.push(token);
+            continue;
+          }
+
+          for(let n=a; n<=b; n++){
+            if(result.set.has(n)){
+              result.duplicates.add(n);
+            }else{
+              result.set.add(n);
+            }
+          }
+        }else{
+          const n = Number(token);
+          if(!Number.isFinite(n) || !Number.isInteger(n)){
+            result.invalidTokens.push(token);
+            continue;
+          }
+          if(n < 1 || n > max){
+            result.outOfRange.push(token);
+            continue;
+          }
+          if(result.set.has(n)){
+            result.duplicates.add(n);
+          }else{
+            result.set.add(n);
+          }
+        }
+      }
+
+      if(result.duplicates.size || result.invalidTokens.length || result.outOfRange.length){
+        result.ok = false;
+      }
+      return result;
+    }
+
+    function calcCols(){
+      const w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+      if (w >= 980) return 14;
+      if (w >= 760) return 12;
+      if (w >= 520) return 10;
+      return 8;
+    }
+
+    function getCurrentState(){
+      const state = loadState() || defaultState();
+      state.date = elDate.value || state.date || todayISO();
+      state.max = Math.max(1, Number(elMaxNum.value || state.max || 100));
+      state.hide = elHide.value ?? state.hide ?? "";
+      state.on = state.on || {};
+      return state;
+    }
+
+    function updateCount(){
+      elCountOn.textContent = String(elGrid.querySelectorAll(".cell.on").length);
+    }
+
+    function setHideMessage(validRes){
+      elHideMsg.className = "msg";
+      if(validRes.ok){
+        if(validRes.set.size === 0){
+          elHideMsg.textContent = "OK（非表示なし）";
+        }else{
+          elHideMsg.textContent = `OK（非表示 ${validRes.set.size} 件）`;
+        }
+        elHideMsg.classList.add("ok");
+        return;
+      }
+
+      const msgs = [];
+      if(validRes.invalidTokens.length){
+        msgs.push(`不正: ${validRes.invalidTokens.join(", ")}`);
+      }
+      if(validRes.outOfRange.length){
+        msgs.push(`範囲外(1〜${getMax()}): ${validRes.outOfRange.join(", ")}`);
+      }
+      if(validRes.duplicates.size){
+        const d = Array.from(validRes.duplicates).sort((a,b)=>a-b);
+        msgs.push(`重複/かぶり: ${d.join(", ")}`);
+      }
+      elHideMsg.textContent = "エラー → " + msgs.join(" / ");
+      elHideMsg.classList.add("err");
+    }
+
+    function getMax(){
+      return Math.max(1, Number(elMaxNum.value || 1));
+    }
+
+    function buildGrid(state){
+      const max = state.max;
+
+      // hide を検証（NGならここには来ない想定）
+      const v = validateAndParseHide(state.hide, max);
+      const hideSet = v.set;
+
+      // 非表示/範囲外になった ON 記録は掃除（これはOK）
+      for(const k of Object.keys(state.on)){
+        const n = Number(k);
+        if(!Number.isFinite(n) || n < 1 || n > max || hideSet.has(n)){
+          delete state.on[k];
+        }
+      }
+
+      elGrid.style.setProperty("--cols", calcCols());
+      elGrid.innerHTML = "";
+
+      for(let n=1; n<=max; n++){
+        if(hideSet.has(n)) continue;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cell" + (state.on[n] ? " on" : "");
+        btn.textContent = String(n);
+
+        btn.addEventListener("click", () => {
+          btn.classList.toggle("on");
+          const s = getCurrentState();
+
+          // 現在の hide がエラーなら保存させない（事故防止）
+          const vv = validateAndParseHide(s.hide, s.max);
+          if(!vv.ok){
+            // UIを戻す
+            btn.classList.toggle("on");
+            setHideMessage(vv);
+            elApply.disabled = true;
+            return;
+          }
+
+          const isOn = btn.classList.contains("on");
+          if(isOn) s.on[n] = true;
+          else delete s.on[n];
+
+          saveState(s);
+          updateCount();
+        });
+
+        elGrid.appendChild(btn);
+      }
+
+      saveState(state);
+      updateCount();
+    }
+
+    function apply(){
+      const state = getCurrentState();
+      const v = validateAndParseHide(state.hide, state.max);
+      setHideMessage(v);
+      elApply.disabled = !v.ok;
+      if(!v.ok) return;
+
+      saveState(state);
+      buildGrid(state);
+    }
+
+    function liveValidate(){
+      const max = getMax();
+      const v = validateAndParseHide(elHide.value, max);
+      setHideMessage(v);
+      elApply.disabled = !v.ok;
+    }
+
+    // 初期化
+    (function init(){
+      let state = loadState();
+      if(!state){
+        state = defaultState();
+        saveState(state);
+      }
+      elDate.value = state.date || todayISO();
+      elMaxNum.value = state.max ?? 100;
+      elHide.value = state.hide ?? "";
+
+      // 初回検証
+      const v = validateAndParseHide(elHide.value, Number(elMaxNum.value));
+      setHideMessage(v);
+      elApply.disabled = !v.ok;
+
+      // hide がNGでも、とりあえず今保存されてる状態で描画（ただし適用は不可）
+      if(v.ok){
+        buildGrid(state);
+      }else{
+        // hide が壊れてる場合は、非表示なし扱いで一旦表示（編集して直してもらう）
+        const fallback = { ...state, hide: "" };
+        buildGrid(fallback);
+      }
+    })();
+
+    // UIイベント
+    elDate.addEventListener("change", apply);
+    elApply.addEventListener("click", apply);
+
+    elMaxNum.addEventListener("input", () => {
+      // max 変更時：hide の範囲外が出やすいのでライブ検証だけ走らせる
+      liveValidate();
+    });
+
+    elHide.addEventListener("input", liveValidate);
+
+    elPreset100.addEventListener("click", () => {
+      elMaxNum.value = 100;
+      liveValidate();
+      apply();
+    });
+
+    // リセット = ONだけ消す
+    elReset.addEventListener("click", () => {
+      const state = getCurrentState();
+      const v = validateAndParseHide(state.hide, state.max);
+      setHideMessage(v);
+      elApply.disabled = !v.ok;
+      if(!v.ok) return;
+
+      state.on = {};
+      saveState(state);
+      buildGrid(state);
+    });
+
+    window.addEventListener("resize", () => {
+      const state = getCurrentState();
+      const v = validateAndParseHide(state.hide, state.max);
+      setHideMessage(v);
+      elApply.disabled = !v.ok;
+      if(!v.ok) return;
+      buildGrid(state);
+    });
+  </script>
+</body>
+</html>
