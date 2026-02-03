@@ -1,0 +1,9 @@
+{
+  "name": "NoKanri",
+  "short_name": "NoKanri",
+  "start_url": "/lite-task/",
+  "scope": "/lite-task/",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14"
+}
