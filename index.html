@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NoKanri</title>
 
-  <!-- PWA用（入れてるならそのまま） -->
   <link rel="manifest" href="/lite-task/manifest.webmanifest">
   <meta name="theme-color" content="#0b0f14">
 
@@ -19,15 +18,14 @@
       --muted:#9aa7b8;
 
       --cell-off:#0f1826;
-      --cell-off-text: rgba(232,238,246,0.55);
-      --cell-off-border: rgba(255,255,255,0.06);
+      --cell-off-text: rgba(232,238,246,0.40); /* ←薄く */
+      --cell-off-border: rgba(255,255,255,0.05);
 
       --cell-on:#1f6feb;
       --cell-on-text:#ffffff;
       --cell-on-border: rgba(255,255,255,0.18);
 
       --danger:#d73a49;
-      --ok:#2ea043;
     }
 
     *{ box-sizing:border-box }
@@ -48,14 +46,14 @@
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
-    .bar{
+    .row{
       display:flex;
-      flex-wrap: wrap;
       gap:10px;
-      align-items: center;
+      align-items:center;
+      flex-wrap:nowrap; /* ← 右上に寄せたいので基本折り返さない */
     }
 
-    .pill{
+    .card{
       background: var(--panel);
       border: 1px solid var(--panel-border);
       border-radius: 14px;
@@ -63,7 +61,6 @@
       display:flex;
       gap:10px;
       align-items:center;
-      flex-wrap:wrap;
     }
 
     input[type="date"], input[type="number"], input[type="text"]{
@@ -77,58 +74,62 @@
     }
     input[type="number"]{ width: 110px; }
     input[type="date"]{ width: 170px; }
-    input[type="text"]{ width: min(520px, 78vw); }
+    input[type="text"]{ width: 100%; }
 
-    button{
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background:#0f1726;
-      color: var(--text);
-      font-size: 16px;
-      cursor:pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      white-space:nowrap;
-    }
-    button.primary{
-      background: rgba(31,111,235,0.18);
-      border-color: rgba(31,111,235,0.40);
-    }
+    .spacer{ flex:1; }
 
-    /* リセットは小さめRだけ */
-    button.resetR{
-      width: 40px;
-      height: 40px;
-      padding: 0;
-      border-radius: 12px;
-      font-weight: 800;
-      background: rgba(215,58,73,0.12);
-      border-color: rgba(215,58,73,0.30);
+    /* 右上まとめ（ON / 反映 / R） */
+    .topRight{
+      display:flex;
+      gap:8px;
+      align-items:center;
     }
 
     .count{
       background: var(--panel);
       border: 1px solid var(--panel-border);
       border-radius: 14px;
-      padding: 10px 12px;
+      padding: 8px 10px;
       display:flex;
-      gap:10px;
+      gap:8px;
       align-items: baseline;
-      margin-left:auto;
-      min-width: 92px;
+      min-width: 74px;
       justify-content:center;
     }
-    .count strong{
-      font-size: 22px;
-      line-height: 1;
-    }
-    .count span{
-      font-size: 13px;
-      color: var(--muted);
+    .count strong{ font-size: 18px; line-height: 1; }
+    .count span{ font-size: 12px; color: var(--muted); }
+
+    button{
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background:#0f1726;
+      color: var(--text);
+      cursor:pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      white-space:nowrap;
     }
 
-    /* OK表示は出さない。エラーだけ出す */
+    /* 反映を小さめに */
+    button.apply{
+      padding: 8px 10px;
+      font-size: 14px;
+      background: rgba(31,111,235,0.18);
+      border-color: rgba(31,111,235,0.40);
+    }
+
+    /* Rをさらに小さめに */
+    button.resetR{
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      font-size: 14px;
+      font-weight: 900;
+      background: rgba(215,58,73,0.12);
+      border-color: rgba(215,58,73,0.30);
+    }
+
+    /* エラーだけ表示（OKは出さない） */
     .msg{
       margin-top: 8px;
       font-size: 12px;
@@ -168,8 +169,7 @@
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
 
-      /* 未選択は存在感薄く */
-      opacity: 0.60;
+      opacity: 0.45; /* ←未選択をもっと薄く */
     }
     .cell.on{
       background: var(--cell-on);
@@ -179,35 +179,41 @@
       opacity: 1;
     }
 
-    /* 画面サイズで列数を増やす */
-    @media (min-width: 980px){ .grid{ gap: 7px; } }
-    @media (min-width: 760px){ .grid{ gap: 7px; } }
+    /* 画面が狭い端末は2段にして崩れを防ぐ */
+    @media (max-width: 420px){
+      .row{ flex-wrap:wrap; }
+      .spacer{ display:none; }
+      .topRight{ width:100%; justify-content:flex-end; }
+    }
   </style>
 </head>
 
 <body>
   <header>
-    <div class="bar">
-      <div class="pill">
-        <!-- タイトルなし -->
+    <!-- 上段：日付/最大（左） + 右上まとめ（右） -->
+    <div class="row">
+      <div class="card">
         <input id="dateInput" type="date" />
         <input id="maxNum" type="number" min="1" value="100" />
       </div>
 
-      <div class="pill" style="flex:1 1 420px;">
-        <!-- 消す数字（タイトルなし） -->
-        <input id="hideInput" type="text" placeholder="消す数字：56-69, 3, 8" />
-        <!-- 反映はここ -->
-        <button id="applyBtn" class="primary">反映</button>
-        <!-- リセットはR -->
+      <div class="spacer"></div>
+
+      <div class="topRight">
+        <div class="count" aria-label="ON数">
+          <strong id="countOn">0</strong><span>ON</span>
+        </div>
+        <button id="applyBtn" class="apply">反映</button>
         <button id="resetBtn" class="resetR" title="リセット">R</button>
-
-        <div id="hideMsg" class="msg"></div>
       </div>
+    </div>
 
-      <div class="count" aria-label="ON数">
-        <strong id="countOn">0</strong><span>ON</span>
+    <!-- 下段：消す数字（入力のみ） -->
+    <div style="margin-top:10px;">
+      <div class="card" style="width:100%;">
+        <input id="hideInput" type="text" placeholder="消す数字：56-69, 3, 8" />
       </div>
+      <div id="hideMsg" class="msg"></div>
     </div>
   </header>
 
@@ -218,7 +224,7 @@
   </main>
 
   <script>
-    const STORAGE_KEY = "tap-grid-state-v4";
+    const STORAGE_KEY = "tap-grid-state-v5";
 
     const elGrid = document.getElementById("grid");
     const elCountOn = document.getElementById("countOn");
@@ -246,7 +252,6 @@
       return { date: todayISO(), max: 100, hide: "", on: {} };
     }
 
-    // 重複/かぶり/不正/範囲外はエラー
     function validateAndParseHide(text, max){
       const res = { ok:true, set:new Set(), duplicates:new Set(), invalid:[], out:[] };
       const src = (text || "").replace(/\s+/g, "");
@@ -298,7 +303,6 @@
     }
 
     function showError(v){
-      // OKは一切表示しない。エラーだけ出す。
       if(v.ok){
         elHideMsg.classList.remove("show");
         elHideMsg.textContent = "";
@@ -326,7 +330,6 @@
       const v = validateAndParseHide(state.hide, max);
       const hideSet = v.set;
 
-      // 非表示/範囲外になったON記録を掃除
       for(const k of Object.keys(state.on)){
         const n = Number(k);
         if(!Number.isFinite(n) || n < 1 || n > max || hideSet.has(n)){
@@ -346,7 +349,6 @@
         btn.textContent = String(n);
 
         btn.addEventListener("click", () => {
-          // 現在入力がエラーなら操作させない（事故防止）
           const s = getCurrentState();
           const vv = validateAndParseHide(s.hide, s.max);
           showError(vv);
@@ -382,7 +384,6 @@
       showError(v);
     }
 
-    // 初期化
     (function init(){
       let state = loadState();
       if(!state){
@@ -394,19 +395,16 @@
       elHide.value = state.hide ?? "";
 
       liveValidate();
-      // hideが壊れてても表示だけは出す（非表示なし扱い）
       const v = validateAndParseHide(elHide.value, Number(elMaxNum.value));
       if(v.ok) buildGrid(state);
       else buildGrid({ ...state, hide: "" });
     })();
 
-    // イベント
     elDate.addEventListener("change", apply);
     elMaxNum.addEventListener("input", liveValidate);
     elHide.addEventListener("input", liveValidate);
     elApply.addEventListener("click", apply);
 
-    // Rリセット：ONだけ消す
     elReset.addEventListener("click", () => {
       const state = getCurrentState();
       const v = validateAndParseHide(state.hide, state.max);
@@ -426,7 +424,6 @@
       buildGrid(state);
     });
 
-    // PWA用（入れてるなら）
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/lite-task/sw.js").catch(()=>{});
     }
