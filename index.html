@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NoKanri</title>
 
+  <!-- PWA（使ってるならこのまま） -->
   <link rel="manifest" href="/lite-task/manifest.webmanifest">
   <meta name="theme-color" content="#0b0f14">
 
@@ -18,7 +19,7 @@
       --muted:#9aa7b8;
 
       --cell-off:#0f1826;
-      --cell-off-text: rgba(232,238,246,0.40); /* ←薄く */
+      --cell-off-text: rgba(232,238,246,0.40);
       --cell-off-border: rgba(255,255,255,0.05);
 
       --cell-on:#1f6feb;
@@ -50,7 +51,7 @@
       display:flex;
       gap:10px;
       align-items:center;
-      flex-wrap:nowrap; /* ← 右上に寄せたいので基本折り返さない */
+      flex-wrap: wrap; /* ←消えないように常に折り返し可 */
     }
 
     .card{
@@ -64,7 +65,6 @@
     }
 
     input[type="date"], input[type="number"], input[type="text"]{
-      padding: 10px 12px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.08);
       background:#0f1726;
@@ -72,17 +72,36 @@
       font-size: 16px;
       outline: none;
     }
-    input[type="number"]{ width: 110px; }
-    input[type="date"]{ width: 170px; }
-    input[type="text"]{ width: 100%; }
 
-    .spacer{ flex:1; }
+    /* 日付（メイン） */
+    input[type="date"]{
+      width: 170px;
+      padding: 10px 12px;
+    }
 
-    /* 右上まとめ（ON / 反映 / R） */
+    /* 最大（内部設定）→ 小さく薄く */
+    input[type="number"]{
+      width: 72px;
+      padding: 6px 8px;
+      font-size: 13px;
+      color: rgba(232,238,246,0.55);
+      background: rgba(15,23,38,0.55);
+      border: 1px solid rgba(255,255,255,0.04);
+      opacity: .75;
+    }
+    input[type="number"]:not(:focus){ opacity: .65; }
+
+    /* 消す数字 */
+    input[type="text"]{
+      width: 100%;
+      padding: 10px 12px;
+    }
+
     .topRight{
       display:flex;
       gap:8px;
       align-items:center;
+      margin-left:auto; /* 右寄せ */
     }
 
     .count{
@@ -93,7 +112,7 @@
       display:flex;
       gap:8px;
       align-items: baseline;
-      min-width: 74px;
+      min-width: 86px;
       justify-content:center;
     }
     .count strong{ font-size: 18px; line-height: 1; }
@@ -110,20 +129,20 @@
       white-space:nowrap;
     }
 
-    /* 反映を小さめに */
+    /* 反映（小さめ） */
     button.apply{
-      padding: 8px 10px;
-      font-size: 14px;
+      padding: 7px 9px;
+      font-size: 13px;
       background: rgba(31,111,235,0.18);
       border-color: rgba(31,111,235,0.40);
     }
 
-    /* Rをさらに小さめに */
+    /* リセットR（さらに小さめ） */
     button.resetR{
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       padding: 0;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 900;
       background: rgba(215,58,73,0.12);
       border-color: rgba(215,58,73,0.30);
@@ -149,7 +168,7 @@
 
     .grid{
       display:grid;
-      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      grid-template-columns: repeat(10, minmax(0, 1fr)); /* ←常に10列 */
       gap: 7px;
       align-items: stretch;
     }
@@ -169,7 +188,7 @@
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
 
-      opacity: 0.45; /* ←未選択をもっと薄く */
+      opacity: 0.45; /* ←未選択は薄い */
     }
     .cell.on{
       background: var(--cell-on);
@@ -179,29 +198,25 @@
       opacity: 1;
     }
 
-    /* 画面が狭い端末は2段にして崩れを防ぐ */
+    /* かなり狭い端末は右上ブロックを下に落としても見切れないようにする */
     @media (max-width: 420px){
-      .row{ flex-wrap:wrap; }
-      .spacer{ display:none; }
-      .topRight{ width:100%; justify-content:flex-end; }
+      .topRight{ width: 100%; justify-content:flex-end; margin-left:0; }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <!-- 上段：日付/最大（左） + 右上まとめ（右） -->
+    <!-- 上段：日付 + 最大（左） / 成功数 + 反映 + R（右） -->
     <div class="row">
       <div class="card">
         <input id="dateInput" type="date" />
         <input id="maxNum" type="number" min="1" value="100" />
       </div>
 
-      <div class="spacer"></div>
-
       <div class="topRight">
-        <div class="count" aria-label="ON数">
-          <strong id="countOn">0</strong><span>ON</span>
+        <div class="count" aria-label="成功数">
+          <strong id="countOn">0</strong><span>成功</span>
         </div>
         <button id="applyBtn" class="apply">反映</button>
         <button id="resetBtn" class="resetR" title="リセット">R</button>
@@ -219,12 +234,12 @@
 
   <main>
     <div class="wrap">
-      <div id="grid" class="grid" style="--cols:10;"></div>
+      <div id="grid" class="grid"></div>
     </div>
   </main>
 
   <script>
-    const STORAGE_KEY = "tap-grid-state-v5";
+    const STORAGE_KEY = "tap-grid-state-v6";
 
     const elGrid = document.getElementById("grid");
     const elCountOn = document.getElementById("countOn");
@@ -252,6 +267,7 @@
       return { date: todayISO(), max: 100, hide: "", on: {} };
     }
 
+    // 重複/かぶり/不正/範囲外はエラー
     function validateAndParseHide(text, max){
       const res = { ok:true, set:new Set(), duplicates:new Set(), invalid:[], out:[] };
       const src = (text || "").replace(/\s+/g, "");
@@ -281,14 +297,6 @@
       return res;
     }
 
-    function calcCols(){
-      const w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-      if (w >= 980) return 14;
-      if (w >= 760) return 12;
-      if (w >= 520) return 10;
-      return 8;
-    }
-
     function getCurrentState(){
       const state = loadState() || defaultState();
       state.date = elDate.value || state.date || todayISO();
@@ -302,6 +310,7 @@
       elCountOn.textContent = String(elGrid.querySelectorAll(".cell.on").length);
     }
 
+    // OKは一切表示しない。エラーだけ表示。
     function showError(v){
       if(v.ok){
         elHideMsg.classList.remove("show");
@@ -330,6 +339,7 @@
       const v = validateAndParseHide(state.hide, max);
       const hideSet = v.set;
 
+      // 非表示/範囲外になったON記録を掃除
       for(const k of Object.keys(state.on)){
         const n = Number(k);
         if(!Number.isFinite(n) || n < 1 || n > max || hideSet.has(n)){
@@ -337,7 +347,6 @@
         }
       }
 
-      elGrid.style.setProperty("--cols", calcCols());
       elGrid.innerHTML = "";
 
       for(let n=1; n<=max; n++){
@@ -405,6 +414,7 @@
     elHide.addEventListener("input", liveValidate);
     elApply.addEventListener("click", apply);
 
+    // Rリセット：成功（選択）だけ全解除
     elReset.addEventListener("click", () => {
       const state = getCurrentState();
       const v = validateAndParseHide(state.hide, state.max);
@@ -416,14 +426,7 @@
       buildGrid(state);
     });
 
-    window.addEventListener("resize", () => {
-      const state = getCurrentState();
-      const v = validateAndParseHide(state.hide, state.max);
-      showError(v);
-      if(!v.ok) return;
-      buildGrid(state);
-    });
-
+    // PWA用（入れてるなら）
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/lite-task/sw.js").catch(()=>{});
     }
