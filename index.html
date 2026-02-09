@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NoKanri</title>
 
-  <!-- PWA（使ってるならこのまま） -->
+  <!-- PWA（使ってるなら） -->
   <link rel="manifest" href="/lite-task/manifest.webmanifest">
   <meta name="theme-color" content="#0b0f14">
 
@@ -51,7 +51,7 @@
       display:flex;
       gap:10px;
       align-items:center;
-      flex-wrap: wrap; /* ←消えないように常に折り返し可 */
+      flex-wrap: wrap;
     }
 
     .card{
@@ -69,7 +69,6 @@
       border: 1px solid rgba(255,255,255,0.08);
       background:#0f1726;
       color: var(--text);
-      font-size: 16px;
       outline: none;
     }
 
@@ -77,9 +76,10 @@
     input[type="date"]{
       width: 170px;
       padding: 10px 12px;
+      font-size: 16px;
     }
 
-    /* 最大（内部設定）→ 小さく薄く */
+    /* 最大（内部設定・目立たない） */
     input[type="number"]{
       width: 72px;
       padding: 6px 8px;
@@ -87,23 +87,18 @@
       color: rgba(232,238,246,0.55);
       background: rgba(15,23,38,0.55);
       border: 1px solid rgba(255,255,255,0.04);
-      opacity: .75;
+      opacity: .65;
     }
-    input[type="number"]:not(:focus){ opacity: .65; }
+    input[type="number"]:focus{ opacity: .85; }
 
     /* 消す数字 */
     input[type="text"]{
-      width: 100%;
+      width: min(280px, 72vw);
       padding: 10px 12px;
+      font-size: 15px;
     }
 
-    .topRight{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      margin-left:auto; /* 右寄せ */
-    }
-
+    /* 成功数 */
     .count{
       background: var(--panel);
       border: 1px solid var(--panel-border);
@@ -131,13 +126,13 @@
 
     /* 反映（小さめ） */
     button.apply{
-      padding: 7px 9px;
+      padding: 8px 10px;
       font-size: 13px;
       background: rgba(31,111,235,0.18);
       border-color: rgba(31,111,235,0.40);
     }
 
-    /* リセットR（さらに小さめ） */
+    /* リセットR（小さめ） */
     button.resetR{
       width: 34px;
       height: 34px;
@@ -168,7 +163,7 @@
 
     .grid{
       display:grid;
-      grid-template-columns: repeat(10, minmax(0, 1fr)); /* ←常に10列 */
+      grid-template-columns: repeat(10, minmax(0, 1fr)); /* 常に10列 */
       gap: 7px;
       align-items: stretch;
     }
@@ -188,7 +183,7 @@
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
 
-      opacity: 0.45; /* ←未選択は薄い */
+      opacity: 0.45; /* 未選択は薄い */
     }
     .cell.on{
       background: var(--cell-on);
@@ -198,57 +193,106 @@
       opacity: 1;
     }
 
-    /* かなり狭い端末は右上ブロックを下に落としても見切れないようにする */
-    @media (max-width: 420px){
-      .topRight{ width: 100%; justify-content:flex-end; margin-left:0; }
+    /* ログ＋コピー */
+    .orderRow{
+      display:flex;
+      gap:10px;
+      align-items:stretch;
     }
+    .orderLog{
+      flex:1;
+      min-height: 40px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(15,23,38,0.6);
+      border: 1px solid rgba(255,255,255,0.05);
+      color: rgba(232,238,246,0.75);
+      font-size: 14px;
+      line-height: 1.6;
+      word-break: break-all;
+    }
+    .copyBtn{
+      width: 76px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(31,111,235,0.14);
+      border-color: rgba(31,111,235,0.32);
+      color: rgba(232,238,246,0.88);
+      font-size: 13px;
+      padding: 10px 10px;
+    }
+    .copyBtn:disabled{
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    .copyMsg{
+      margin-top: 8px;
+      font-size: 12px;
+      color: rgba(232,238,246,0.55);
+      display:none;
+    }
+    .copyMsg.show{ display:block; }
   </style>
 </head>
 
 <body>
   <header>
-    <!-- 上段：日付 + 最大（左） / 成功数 + 反映 + R（右） -->
+    <!-- 1段目：日付 + 最大（内部設定） -->
     <div class="row">
       <div class="card">
         <input id="dateInput" type="date" />
         <input id="maxNum" type="number" min="1" value="100" />
       </div>
-
-      <div class="topRight">
-        <div class="count" aria-label="成功数">
-          <strong id="countOn">0</strong><span>成功</span>
-        </div>
-        <button id="applyBtn" class="apply">反映</button>
-        <button id="resetBtn" class="resetR" title="リセット">R</button>
-      </div>
     </div>
 
-    <!-- 下段：消す数字（入力のみ） -->
-    <div style="margin-top:10px;">
-      <div class="card" style="width:100%;">
+    <!-- 2段目：成功数 + リセット -->
+    <div class="row" style="margin-top:10px;">
+      <div class="count" aria-label="成功数">
+        <strong id="countSuccess">0</strong><span>成功</span>
+      </div>
+      <button id="resetBtn" class="resetR" title="リセット">R</button>
+    </div>
+
+    <!-- 3段目：消す数字 + 反映 -->
+    <div class="row" style="margin-top:10px;">
+      <div class="card">
         <input id="hideInput" type="text" placeholder="消す数字：56-69, 3, 8" />
       </div>
-      <div id="hideMsg" class="msg"></div>
+      <button id="applyBtn" class="apply">反映</button>
     </div>
+
+    <div id="hideMsg" class="msg"></div>
   </header>
 
   <main>
     <div class="wrap">
       <div id="grid" class="grid"></div>
     </div>
+
+    <div class="wrap" style="margin-top:10px;">
+      <div class="orderRow">
+        <div id="orderLog" class="orderLog"></div>
+        <button id="copyBtn" class="copyBtn">コピー</button>
+      </div>
+      <div id="copyMsg" class="copyMsg"></div>
+    </div>
   </main>
 
   <script>
-    const STORAGE_KEY = "tap-grid-state-v6";
+    const STORAGE_KEY = "tap-grid-state-v7";
 
     const elGrid = document.getElementById("grid");
-    const elCountOn = document.getElementById("countOn");
     const elDate = document.getElementById("dateInput");
     const elMaxNum = document.getElementById("maxNum");
     const elHide = document.getElementById("hideInput");
     const elHideMsg = document.getElementById("hideMsg");
     const elApply = document.getElementById("applyBtn");
     const elReset = document.getElementById("resetBtn");
+
+    const elCountSuccess = document.getElementById("countSuccess");
+    const elOrderLog = document.getElementById("orderLog");
+    const elCopyBtn = document.getElementById("copyBtn");
+    const elCopyMsg = document.getElementById("copyMsg");
 
     function loadState(){
       try{
@@ -264,7 +308,7 @@
       return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
     }
     function defaultState(){
-      return { date: todayISO(), max: 100, hide: "", on: {} };
+      return { date: todayISO(), max: 100, hide: "", on: {}, order: [] };
     }
 
     // 重複/かぶり/不正/範囲外はエラー
@@ -303,14 +347,10 @@
       state.max = Math.max(1, Number(elMaxNum.value || state.max || 100));
       state.hide = elHide.value ?? state.hide ?? "";
       state.on = state.on || {};
+      state.order = state.order || [];
       return state;
     }
 
-    function updateCount(){
-      elCountOn.textContent = String(elGrid.querySelectorAll(".cell.on").length);
-    }
-
-    // OKは一切表示しない。エラーだけ表示。
     function showError(v){
       if(v.ok){
         elHideMsg.classList.remove("show");
@@ -334,18 +374,59 @@
       return Math.max(1, Number(elMaxNum.value || 1));
     }
 
+    function updateCount(){
+      elCountSuccess.textContent = String(elGrid.querySelectorAll(".cell.on").length);
+    }
+
+    function renderOrder(state){
+      const text = (state.order || []).join(", ");
+      elOrderLog.textContent = text;
+      elCopyBtn.disabled = text.length === 0;
+    }
+
+    function showCopyMsg(text){
+      elCopyMsg.textContent = text;
+      elCopyMsg.classList.add("show");
+      clearTimeout(showCopyMsg._t);
+      showCopyMsg._t = setTimeout(() => elCopyMsg.classList.remove("show"), 1200);
+    }
+
+    async function copyText(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch(_){}
+
+      try{
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        ta.style.top = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      }catch(_){
+        return false;
+      }
+    }
+
     function buildGrid(state){
       const max = state.max;
       const v = validateAndParseHide(state.hide, max);
       const hideSet = v.set;
 
-      // 非表示/範囲外になったON記録を掃除
+      // 非表示/範囲外になったON/ログを掃除
       for(const k of Object.keys(state.on)){
         const n = Number(k);
         if(!Number.isFinite(n) || n < 1 || n > max || hideSet.has(n)){
           delete state.on[k];
         }
       }
+      state.order = (state.order || []).filter(n => n >= 1 && n <= max && !hideSet.has(n) && state.on[n]);
 
       elGrid.innerHTML = "";
 
@@ -363,13 +444,19 @@
           showError(vv);
           if(!vv.ok) return;
 
-          btn.classList.toggle("on");
-          const isOn = btn.classList.contains("on");
-          if(isOn) s.on[n] = true;
-          else delete s.on[n];
+          const isOn = btn.classList.toggle("on");
+
+          if(isOn){
+            s.on[n] = true;
+            if(!s.order.includes(n)) s.order.push(n); // 押した順に追加
+          }else{
+            delete s.on[n];
+            s.order = s.order.filter(v => v !== n); // OFFで削除
+          }
 
           saveState(s);
           updateCount();
+          renderOrder(s);
         });
 
         elGrid.appendChild(btn);
@@ -377,6 +464,7 @@
 
       saveState(state);
       updateCount();
+      renderOrder(state);
     }
 
     function apply(){
@@ -402,6 +490,7 @@
       elDate.value = state.date || todayISO();
       elMaxNum.value = state.max ?? 100;
       elHide.value = state.hide ?? "";
+      state.order = state.order || [];
 
       liveValidate();
       const v = validateAndParseHide(elHide.value, Number(elMaxNum.value));
@@ -414,7 +503,7 @@
     elHide.addEventListener("input", liveValidate);
     elApply.addEventListener("click", apply);
 
-    // Rリセット：成功（選択）だけ全解除
+    // Rリセット：成功（選択）＋ログを全解除
     elReset.addEventListener("click", () => {
       const state = getCurrentState();
       const v = validateAndParseHide(state.hide, state.max);
@@ -422,8 +511,18 @@
       if(!v.ok) return;
 
       state.on = {};
+      state.order = [];
       saveState(state);
       buildGrid(state);
+    });
+
+    // コピー
+    elCopyBtn.addEventListener("click", async () => {
+      const s = getCurrentState();
+      const text = (s.order || []).join(", ");
+      if(!text) return;
+      const ok = await copyText(text);
+      showCopyMsg(ok ? "コピーしました" : "コピー失敗（長押しで選択してコピー）");
     });
 
     // PWA用（入れてるなら）
