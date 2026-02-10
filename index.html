@@ -6,8 +6,8 @@
   <title>NoKanri</title>
 
   <!-- PWA（使ってるなら） -->
-  <link rel="manifest" href="/lite-task/manifest.webmanifest">
-  <meta name="theme-color" content="#0b0f14">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0b0f14">
 
   <style>
     :root{
@@ -527,7 +527,7 @@
 
     // PWA用（入れてるなら）
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/lite-task/sw.js").catch(()=>{});
+      navigator.serviceWorker.register("./sw.js").catch(()=>{});
     }
   </script>
 </body>
