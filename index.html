@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NoKanri</title>
 
-  <!-- PWA（使ってるなら） -->
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#0b0f14">
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#0b0f14">
 
   <style>
     :root{
@@ -143,6 +143,17 @@
       border-color: rgba(215,58,73,0.30);
     }
 
+    /* スクショ📸 */
+    button.shotBtn{
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      font-size: 16px;
+      font-weight: 800;
+      background: rgba(232,238,246,0.06);
+      border-color: rgba(255,255,255,0.12);
+    }
+
     /* エラーだけ表示（OKは出さない） */
     .msg{
       margin-top: 8px;
@@ -182,7 +193,6 @@
       line-height: 1;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-
       opacity: 0.45; /* 未選択は薄い */
     }
     .cell.on{
@@ -232,54 +242,71 @@
       display:none;
     }
     .copyMsg.show{ display:block; }
+
+    /* スクショ進行メッセージ */
+    .shotMsg{
+      margin-top: 10px;
+      font-size: 12px;
+      color: rgba(232,238,246,0.55);
+      display:none;
+    }
+    .shotMsg.show{ display:block; }
   </style>
 </head>
 
 <body>
-  <header>
-    <!-- 1段目：日付 + 最大（内部設定） -->
-    <div class="row">
-      <div class="card">
-        <input id="dateInput" type="date" />
-        <input id="maxNum" type="number" min="1" value="100" />
+  <!-- スクショ対象：ヘッダーも含めて全部 -->
+  <div id="shotArea">
+    <header>
+      <!-- 1段目：日付 + 最大（内部設定） -->
+      <div class="row">
+        <div class="card">
+          <input id="dateInput" type="date" />
+          <input id="maxNum" type="number" min="1" value="100" />
+        </div>
       </div>
-    </div>
 
-    <!-- 2段目：成功数 + リセット -->
-    <div class="row" style="margin-top:10px;">
-      <div class="count" aria-label="成功数">
-        <strong id="countSuccess">0</strong><span>成功</span>
+      <!-- 2段目：成功数 + 📸 + R -->
+      <div class="row" style="margin-top:10px;">
+        <div class="count" aria-label="成功数">
+          <strong id="countSuccess">0</strong><span>成功</span>
+        </div>
+        <button id="shotBtn" class="shotBtn" title="スクショ">📸</button>
+        <button id="resetBtn" class="resetR" title="リセット">R</button>
       </div>
-      <button id="resetBtn" class="resetR" title="リセット">R</button>
-    </div>
 
-    <!-- 3段目：消す数字 + 反映 -->
-    <div class="row" style="margin-top:10px;">
-      <div class="card">
-        <input id="hideInput" type="text" placeholder="消す数字：56-69, 3, 8" />
+      <!-- 3段目：消す数字 + 反映 -->
+      <div class="row" style="margin-top:10px;">
+        <div class="card">
+          <input id="hideInput" type="text" placeholder="消す数字：56-69, 3, 8" />
+        </div>
+        <button id="applyBtn" class="apply">反映</button>
       </div>
-      <button id="applyBtn" class="apply">反映</button>
-    </div>
 
-    <div id="hideMsg" class="msg"></div>
-  </header>
+      <div id="hideMsg" class="msg"></div>
+    </header>
 
-  <main>
-    <div class="wrap">
-      <div id="grid" class="grid"></div>
-    </div>
-
-    <div class="wrap" style="margin-top:10px;">
-      <div class="orderRow">
-        <div id="orderLog" class="orderLog"></div>
-        <button id="copyBtn" class="copyBtn">コピー</button>
+    <main>
+      <div class="wrap">
+        <div id="grid" class="grid"></div>
       </div>
-      <div id="copyMsg" class="copyMsg"></div>
-    </div>
-  </main>
+
+      <div class="wrap" style="margin-top:10px;">
+        <div class="orderRow">
+          <div id="orderLog" class="orderLog"></div>
+          <button id="copyBtn" class="copyBtn">コピー</button>
+        </div>
+        <div id="copyMsg" class="copyMsg"></div>
+        <div id="shotMsg" class="shotMsg"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- スクショ生成（ページ内容だけをPNG化） -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <script>
-    const STORAGE_KEY = "tap-grid-state-v7";
+    const STORAGE_KEY = "tap-grid-state-v8";
 
     const elGrid = document.getElementById("grid");
     const elDate = document.getElementById("dateInput");
@@ -293,6 +320,10 @@
     const elOrderLog = document.getElementById("orderLog");
     const elCopyBtn = document.getElementById("copyBtn");
     const elCopyMsg = document.getElementById("copyMsg");
+
+    const elShotBtn = document.getElementById("shotBtn");
+    const elShotArea = document.getElementById("shotArea");
+    const elShotMsg = document.getElementById("shotMsg");
 
     function loadState(){
       try{
@@ -309,6 +340,13 @@
     }
     function defaultState(){
       return { date: todayISO(), max: 100, hide: "", on: {}, order: [] };
+    }
+
+    function showTempMsg(el, text){
+      el.textContent = text;
+      el.classList.add("show");
+      clearTimeout(showTempMsg._t);
+      showTempMsg._t = setTimeout(() => el.classList.remove("show"), 1200);
     }
 
     // 重複/かぶり/不正/範囲外はエラー
@@ -382,13 +420,6 @@
       const text = (state.order || []).join(", ");
       elOrderLog.textContent = text;
       elCopyBtn.disabled = text.length === 0;
-    }
-
-    function showCopyMsg(text){
-      elCopyMsg.textContent = text;
-      elCopyMsg.classList.add("show");
-      clearTimeout(showCopyMsg._t);
-      showCopyMsg._t = setTimeout(() => elCopyMsg.classList.remove("show"), 1200);
     }
 
     async function copyText(text){
@@ -481,6 +512,55 @@
       showError(v);
     }
 
+    async function captureAndDownload(){
+      // 画面安定待ち
+      showTempMsg(elShotMsg, "作成中…");
+      await new Promise(r => setTimeout(r, 60));
+
+      const canvas = await html2canvas(elShotArea, {
+        backgroundColor: "#0b0f14",
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true
+      });
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if(!blob){
+        showTempMsg(elShotMsg, "失敗");
+        return;
+      }
+
+      const date = (elDate.value || "date").replaceAll("-", "");
+      const cnt = (elCountSuccess.textContent || "0");
+      const filename = `${date}_${cnt}.png`;
+
+      // Web Share API（対応端末なら“共有”が一番使いやすい）
+      try{
+        const file = new File([blob], filename, { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "NoKanri", text: filename });
+          showTempMsg(elShotMsg, "共有しました");
+          return;
+        }
+      }catch(_){}
+
+      // ダウンロード（非対応なら新規タブ表示）
+      const url = URL.createObjectURL(blob);
+      try{
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        showTempMsg(elShotMsg, "保存しました");
+      }catch(_){
+        window.open(url, "_blank");
+        showTempMsg(elShotMsg, "表示しました（長押し保存）");
+      }finally{
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      }
+    }
+
     (function init(){
       let state = loadState();
       if(!state){
@@ -522,10 +602,15 @@
       const text = (s.order || []).join(", ");
       if(!text) return;
       const ok = await copyText(text);
-      showCopyMsg(ok ? "コピーしました" : "コピー失敗（長押しで選択してコピー）");
+      showTempMsg(elCopyMsg, ok ? "コピーしました" : "コピー失敗");
     });
 
-    // PWA用（入れてるなら）
+    // 📸（ヘッダー含むページ内容だけ）
+    elShotBtn.addEventListener("click", () => {
+      captureAndDownload().catch(() => showTempMsg(elShotMsg, "失敗"));
+    });
+
+    // PWA（相対パスで登録）
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js").catch(()=>{});
     }
