@@ -1,10 +1,10 @@
-const CACHE = "nok-v1";
+const CACHE = "nok-v3";
 const ASSETS = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest",
-  "./icon-192.png",
-  "./icon-512.png"
+  "/lite-task/",
+  "/lite-task/index.html",
+  "/lite-task/manifest.webmanifest",
+  "/lite-task/icon-192.png",
+  "/lite-task/icon-512.png"
 ];
 
 self.addEventListener("install", (e) => {
